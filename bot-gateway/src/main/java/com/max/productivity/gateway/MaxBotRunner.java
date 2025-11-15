@@ -7,6 +7,8 @@ import org.springframework.stereotype.Component;
 import ru.max.bot.longpolling.LongPollingBot;
 import ru.max.bot.longpolling.LongPollingBotOptions;
 import ru.max.botapi.client.MaxClient;
+import ru.max.botapi.model.Update;
+import ru.max.botapi.model.MessageCreatedUpdate;
 
 /**
  * Spring-компонент для управления жизненным циклом Long Polling бота.
@@ -39,7 +41,20 @@ public class MaxBotRunner implements CommandLineRunner, ApplicationListener<Cont
      */
     @Override
     public void run(String... args) throws Exception {
-        bot = new LongPollingBot(maxClient, LongPollingBotOptions.DEFAULT, maxBotController);
+        this.bot = new LongPollingBot(maxClient, LongPollingBotOptions.DEFAULT, maxBotController) {
+            @Override
+            public Object onUpdate(Update update) {
+                // НАША ЗАЩИТА
+                if (update instanceof MessageCreatedUpdate mcu) {
+                    if (mcu.getMessage() == null || mcu.getMessage().getBody() == null) {
+                        // Игнорируем сервисные сообщения без тела (например, 'Start')
+                        return null;
+                    }
+                }
+                // Если проверка пройдена, передаем управление стандартному обработчику SDK
+                return super.onUpdate(update);
+            }
+        };
         bot.start();
         System.out.println("Long Polling Bot успешно запущен");
     }
@@ -58,4 +73,3 @@ public class MaxBotRunner implements CommandLineRunner, ApplicationListener<Cont
         }
     }
 }
-

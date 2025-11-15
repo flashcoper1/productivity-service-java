@@ -44,8 +44,13 @@ public class MaxBotController {
      */
     @CommandHandler("/addTask")
     public void handleAddTask(Message message) {
-        Long messengerId = message.getFrom().getUserId();
-        String userName = message.getFrom().getUsername();
+        // Игнорируем сообщения без текста (например, нажатие 'Start')
+        if (message.getBody() == null || message.getBody().getText() == null) {
+            return;
+        }
+
+        Long messengerId = message.getSender().getUserId();
+        String userName = message.getSender().getUsername();
 
         try {
             UserDto user = identityService.findOrCreateUser(messengerId, userName);
@@ -79,8 +84,13 @@ public class MaxBotController {
      */
     @CommandHandler("/myTasks")
     public void handleGetMyTasks(Message message) {
-        Long messengerId = message.getFrom().getUserId();
-        String userName = message.getFrom().getUsername();
+        // Игнорируем сообщения без текста (например, нажатие 'Start')
+        if (message.getBody() == null || message.getBody().getText() == null) {
+            return;
+        }
+
+        Long messengerId = message.getSender().getUserId();
+        String userName = message.getSender().getUsername();
 
         try {
             UserDto user = identityService.findOrCreateUser(messengerId, userName);
@@ -122,8 +132,13 @@ public class MaxBotController {
      */
     @CommandHandler("/delegate")
     public void handleDelegateTask(Message message) {
-        Long messengerId = message.getFrom().getUserId();
-        String userName = message.getFrom().getUsername();
+        // Игнорируем сообщения без текста (например, нажатие 'Start')
+        if (message.getBody() == null || message.getBody().getText() == null) {
+            return;
+        }
+
+        Long messengerId = message.getSender().getUserId();
+        String userName = message.getSender().getUsername();
 
         try {
             UserDto user = identityService.findOrCreateUser(messengerId, userName);
@@ -161,8 +176,13 @@ public class MaxBotController {
      */
     @CommandHandler("/complete")
     public void handleCompleteTask(Message message) {
-        Long messengerId = message.getFrom().getUserId();
-        String userName = message.getFrom().getUsername();
+        // Игнорируем сообщения без текста (например, нажатие 'Start')
+        if (message.getBody() == null || message.getBody().getText() == null) {
+            return;
+        }
+
+        Long messengerId = message.getSender().getUserId();
+        String userName = message.getSender().getUsername();
 
         try {
             UserDto user = identityService.findOrCreateUser(messengerId, userName);
@@ -205,9 +225,14 @@ public class MaxBotController {
 
     // Вспомогательный метод для отправки сообщений пользователю
     private void sendMessage(Long messengerId, String text) {
-        new SendMessageQuery(maxClient, new NewMessageBody(text))
-            .userId(messengerId)
-            .execute();
+        try {
+            new SendMessageQuery(maxClient, new NewMessageBody(text, null, null))
+                .userId(messengerId)
+                .execute();
+        } catch (Exception e) {
+            // Логируем ошибку, но не прерываем работу
+            System.err.println("Ошибка при отправке сообщения: " + e.getMessage());
+        }
     }
 
     /**

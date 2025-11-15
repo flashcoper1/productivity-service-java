@@ -50,9 +50,13 @@ public class NotificationEventListener {
             UserDto user = userOpt.get();
             String message = "✅ Задача создана: " + task.title();
 
-            new SendMessageQuery(maxClient, new NewMessageBody(message))
-                .userId(user.messengerId())
-                .execute();
+            try {
+                new SendMessageQuery(maxClient, new NewMessageBody(message, null, null))
+                    .userId(user.messengerId())
+                    .execute();
+            } catch (Exception e) {
+                System.err.println("Ошибка при отправке уведомления: " + e.getMessage());
+            }
         }
     }
 
@@ -74,9 +78,13 @@ public class NotificationEventListener {
             UserDto newOwner = newOwnerOpt.get();
             String message = "📋 Вам делегирована задача #" + taskId;
 
-            new SendMessageQuery(maxClient, new NewMessageBody(message))
-                .userId(newOwner.messengerId())
-                .execute();
+            try {
+                new SendMessageQuery(maxClient, new NewMessageBody(message, null, null))
+                    .userId(newOwner.messengerId())
+                    .execute();
+            } catch (Exception e) {
+                System.err.println("Ошибка при отправке уведомления: " + e.getMessage());
+            }
         }
 
         // Отправляем уведомление предыдущему владельцу
@@ -85,9 +93,13 @@ public class NotificationEventListener {
             UserDto previousOwner = previousOwnerOpt.get();
             String message = "📤 Вы делегировали задачу #" + taskId + " пользователю #" + newOwnerId;
 
-            new SendMessageQuery(maxClient, new NewMessageBody(message))
-                .userId(previousOwner.messengerId())
-                .execute();
+            try {
+                new SendMessageQuery(maxClient, new NewMessageBody(message, null, null))
+                    .userId(previousOwner.messengerId())
+                    .execute();
+            } catch (Exception e) {
+                System.err.println("Ошибка при отправке уведомления: " + e.getMessage());
+            }
         }
     }
 
@@ -112,10 +124,13 @@ public class NotificationEventListener {
             UserDto user = userOpt.get();
             String message = "🎉 Поздравляем! Задача #" + taskId + " '" + task.title() + "' успешно завершена!";
 
-            new SendMessageQuery(maxClient, new NewMessageBody(message))
-                .userId(user.messengerId())
-                .execute();
+            try {
+                new SendMessageQuery(maxClient, new NewMessageBody(message, null, null))
+                    .userId(user.messengerId())
+                    .execute();
+            } catch (Exception e) {
+                System.err.println("Ошибка при отправке уведомления: " + e.getMessage());
+            }
         }
     }
 }
-
