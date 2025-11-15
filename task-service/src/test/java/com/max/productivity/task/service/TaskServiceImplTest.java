@@ -265,13 +265,20 @@ class TaskServiceImplTest {
     void whenDeleteTask_thenRemoveFromRepository_shouldSucceed() {
         // Arrange
         Long taskId = 1L;
-        when(taskRepository.existsById(taskId)).thenReturn(true);
+        Long requesterId = 123L;
+
+        Task task = Task.builder()
+            .id(taskId)
+            .ownerId(requesterId)
+            .build();
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
 
         // Act
-        taskService.deleteTask(taskId);
+        taskService.deleteTask(taskId, requesterId);
 
         // Assert
-        verify(taskRepository, times(1)).existsById(taskId);
+        verify(taskRepository, times(1)).findById(taskId);
         verify(taskRepository, times(1)).deleteById(taskId);
     }
 
@@ -282,13 +289,14 @@ class TaskServiceImplTest {
     void whenUpdateTask_thenSaveUpdatedTask_shouldSucceed() {
         // Arrange
         Long taskId = 1L;
+        Long requesterId = 123L;
         Task existingTask = Task.builder()
             .id(taskId)
             .title("Старый заголовок")
             .description("Старое описание")
             .status("TODO")
             .priority(1)
-            .ownerId(123L)
+            .ownerId(requesterId)
             .build();
 
         TaskDto updateDto = new TaskDto(
@@ -298,7 +306,7 @@ class TaskServiceImplTest {
             "IN_PROGRESS",
             2,
             Instant.parse("2025-11-25T15:00:00Z"),
-            123L
+            requesterId
         );
 
         Task updatedTask = Task.builder()
@@ -307,7 +315,7 @@ class TaskServiceImplTest {
             .description("Новое описание")
             .status("IN_PROGRESS")
             .priority(2)
-            .ownerId(123L)
+            .ownerId(requesterId)
             .dueDate(Instant.parse("2025-11-25T15:00:00Z"))
             .build();
 
@@ -315,7 +323,7 @@ class TaskServiceImplTest {
         when(taskRepository.save(any(Task.class))).thenReturn(updatedTask);
 
         // Act
-        TaskDto result = taskService.updateTask(taskId, updateDto);
+        TaskDto result = taskService.updateTask(taskId, updateDto, requesterId);
 
         // Assert
         assertNotNull(result);
@@ -337,6 +345,7 @@ class TaskServiceImplTest {
         Long taskId = 1L;
         Long previousOwnerId = 50L;
         Long newOwnerId = 100L;
+        Long requesterId = previousOwnerId; // Запросчик - текущий владелец
 
         Task task = Task.builder()
             .id(taskId)
@@ -347,18 +356,18 @@ class TaskServiceImplTest {
             .build();
 
         when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
-        when(identityService.userExists(newOwnerId)).thenReturn(true);
+        when(identityService.userExistsById(newOwnerId)).thenReturn(true);
         when(taskRepository.save(any(Task.class))).thenReturn(task);
 
         // Act
-        taskService.delegateTask(taskId, newOwnerId);
+        taskService.delegateTask(taskId, newOwnerId, requesterId);
 
         // Assert
         // 1. Проверяем, что владелец задачи изменился
         assertEquals(newOwnerId, task.getOwnerId());
 
-        // 2. Проверяем, что identityService.userExists был вызван
-        verify(identityService, times(1)).userExists(newOwnerId);
+        // 2. Проверяем, что identityService.userExistsById был вызван
+        verify(identityService, times(1)).userExistsById(newOwnerId);
 
         // 3. Проверяем, что задача была сохранена
         verify(taskRepository, times(1)).save(task);
@@ -382,16 +391,17 @@ class TaskServiceImplTest {
         // Arrange
         Long taskId = 999L;
         Long targetUserId = 100L;
+        Long requesterId = 50L;
 
         when(taskRepository.findById(taskId)).thenReturn(Optional.empty());
 
         // Act & Assert
         assertThrows(TaskNotFoundException.class,
-            () -> taskService.delegateTask(taskId, targetUserId),
+            () -> taskService.delegateTask(taskId, targetUserId, requesterId),
             "Должно быть выброшено TaskNotFoundException когда задача не найдена");
 
         // Проверяем, что identityService не был вызван
-        verify(identityService, never()).userExists(any());
+        verify(identityService, never()).userExistsById(any());
         // Проверяем, что событие не было опубликовано
         verify(eventPublisher, never()).publishEvent(any());
     }
@@ -405,24 +415,25 @@ class TaskServiceImplTest {
         // Arrange
         Long taskId = 1L;
         Long targetUserId = 999L;
+        Long requesterId = 50L;
 
         Task task = Task.builder()
             .id(taskId)
-            .ownerId(50L)
+            .ownerId(requesterId)
             .title("Тестовая задача")
             .build();
 
         when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
-        when(identityService.userExists(targetUserId)).thenReturn(false);
+        when(identityService.userExistsById(targetUserId)).thenReturn(false);
 
         // Act & Assert
         assertThrows(UserNotFoundException.class,
-            () -> taskService.delegateTask(taskId, targetUserId),
+            () -> taskService.delegateTask(taskId, targetUserId, requesterId),
             "Должно быть выброшено UserNotFoundException когда пользователь не найден");
 
         // Проверяем, что identityService был вызван
-        verify(identityService, times(1)).userExists(targetUserId);
-        // Проверяем, что задача НЕ была сохранена
+        verify(identityService, times(1)).userExistsById(targetUserId);
+        // Проверяем, что save не был вызван
         verify(taskRepository, never()).save(any());
         // Проверяем, что событие НЕ было опубликовано
         verify(eventPublisher, never()).publishEvent(any());
@@ -430,17 +441,18 @@ class TaskServiceImplTest {
 
     /**
      * Тест завершения задачи: успешный сценарий.
-     * Проверяет, что статус задачи изменяется на COMPLETED и событие публикуется.
+     * Проверяет, что статус задачи изменяется на COMPLETED и публикуется событие.
      */
     @Test
     void whenCompleteTask_withValidId_shouldSucceed() {
         // Arrange
         Long taskId = 1L;
+        Long requesterId = 123L;
         Task task = Task.builder()
             .id(taskId)
             .title("Задача для завершения")
             .status("TODO")
-            .ownerId(123L)
+            .ownerId(requesterId)
             .priority(1)
             .build();
 
@@ -448,7 +460,7 @@ class TaskServiceImplTest {
         when(taskRepository.save(any(Task.class))).thenReturn(task);
 
         // Act
-        taskService.completeTask(taskId);
+        taskService.completeTask(taskId, requesterId);
 
         // Assert
         // 1. Проверяем, что статус изменился на COMPLETED
@@ -473,18 +485,175 @@ class TaskServiceImplTest {
     void whenCompleteTask_taskNotFound_shouldThrowTaskNotFoundException() {
         // Arrange
         Long taskId = 999L;
+        Long requesterId = 123L;
 
         when(taskRepository.findById(taskId)).thenReturn(Optional.empty());
 
         // Act & Assert
         assertThrows(TaskNotFoundException.class,
-            () -> taskService.completeTask(taskId),
+            () -> taskService.completeTask(taskId, requesterId),
             "Должно быть выброшено TaskNotFoundException когда задача не найдена");
 
         // Проверяем, что событие не было опубликовано
         verify(eventPublisher, never()).publishEvent(any());
         // Проверяем, что save не был вызван
         verify(taskRepository, never()).save(any());
+    }
+
+    /**
+     * Тест завершения задачи не владельцем: проверка безопасности.
+     * Проверяет, что SecurityException выбрасывается, если requesterId не совпадает с ownerId.
+     */
+    @Test
+    void whenCompleteTask_byNonOwner_shouldThrowSecurityException() {
+        // Arrange
+        Long taskId = 1L;
+        Long ownerId = 123L;
+        Long requesterId = 999L; // Другой пользователь, не владелец
+
+        Task task = Task.builder()
+            .id(taskId)
+            .title("Задача другого пользователя")
+            .status("TODO")
+            .ownerId(ownerId)
+            .priority(1)
+            .build();
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
+
+        // Act & Assert
+        SecurityException exception = assertThrows(SecurityException.class,
+            () -> taskService.completeTask(taskId, requesterId),
+            "Должно быть выброшено SecurityException когда пользователь не является владельцем задачи");
+
+        // Проверяем сообщение об ошибке
+        assertTrue(exception.getMessage().contains("does not have permission to modify task"));
+        assertTrue(exception.getMessage().contains(requesterId.toString()));
+        assertTrue(exception.getMessage().contains(taskId.toString()));
+
+        // Проверяем, что задача НЕ была сохранена
+        verify(taskRepository, never()).save(any());
+        // Проверяем, что событие НЕ было опубликовано
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    /**
+     * Тест делегирования задачи не владельцем: проверка безопасности.
+     * Проверяет, что SecurityException выбрасывается, если requesterId не совпадает с ownerId.
+     */
+    @Test
+    void whenDelegateTask_byNonOwner_shouldThrowSecurityException() {
+        // Arrange
+        Long taskId = 1L;
+        Long ownerId = 50L;
+        Long requesterId = 999L; // Другой пользователь, не владелец
+        Long targetUserId = 100L;
+
+        Task task = Task.builder()
+            .id(taskId)
+            .title("Задача другого пользователя")
+            .ownerId(ownerId)
+            .status("TODO")
+            .priority(1)
+            .build();
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
+
+        // Act & Assert
+        SecurityException exception = assertThrows(SecurityException.class,
+            () -> taskService.delegateTask(taskId, targetUserId, requesterId),
+            "Должно быть выброшено SecurityException когда пользователь не является владельцем задачи");
+
+        // Проверяем сообщение об ошибке
+        assertTrue(exception.getMessage().contains("does not have permission to modify task"));
+        assertTrue(exception.getMessage().contains(requesterId.toString()));
+        assertTrue(exception.getMessage().contains(taskId.toString()));
+
+        // Проверяем, что identityService НЕ был вызван (проверка должна произойти до этого)
+        verify(identityService, never()).userExistsById(any());
+        // Проверяем, что задача НЕ была сохранена
+        verify(taskRepository, never()).save(any());
+        // Проверяем, что событие НЕ было опубликовано
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    /**
+     * Тест обновления задачи не владельцем: проверка безопасности.
+     * Проверяет, что SecurityException выбрасывается, если requesterId не совпадает с ownerId.
+     */
+    @Test
+    void whenUpdateTask_byNonOwner_shouldThrowSecurityException() {
+        // Arrange
+        Long taskId = 1L;
+        Long ownerId = 123L;
+        Long requesterId = 999L; // Другой пользователь, не владелец
+
+        Task existingTask = Task.builder()
+            .id(taskId)
+            .title("Задача другого пользователя")
+            .description("Описание")
+            .status("TODO")
+            .priority(1)
+            .ownerId(ownerId)
+            .build();
+
+        TaskDto updateDto = new TaskDto(
+            taskId,
+            "Обновленный заголовок",
+            "Обновленное описание",
+            "IN_PROGRESS",
+            2,
+            Instant.parse("2025-11-25T15:00:00Z"),
+            ownerId
+        );
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(existingTask));
+
+        // Act & Assert
+        SecurityException exception = assertThrows(SecurityException.class,
+            () -> taskService.updateTask(taskId, updateDto, requesterId),
+            "Должно быть выброшено SecurityException когда пользователь не является владельцем задачи");
+
+        // Проверяем сообщение об ошибке
+        assertTrue(exception.getMessage().contains("does not have permission to modify task"));
+        assertTrue(exception.getMessage().contains(requesterId.toString()));
+        assertTrue(exception.getMessage().contains(taskId.toString()));
+
+        // Проверяем, что задача НЕ была сохранена
+        verify(taskRepository, never()).save(any());
+    }
+
+    /**
+     * Тест удаления задачи не владельцем: проверка безопасности.
+     * Проверяет, что SecurityException выбрасывается, если requesterId не совпадает с ownerId.
+     */
+    @Test
+    void whenDeleteTask_byNonOwner_shouldThrowSecurityException() {
+        // Arrange
+        Long taskId = 1L;
+        Long ownerId = 123L;
+        Long requesterId = 999L; // Другой пользователь, не владелец
+
+        Task task = Task.builder()
+            .id(taskId)
+            .title("Задача другого пользователя")
+            .ownerId(ownerId)
+            .build();
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
+
+        // Act & Assert
+        SecurityException exception = assertThrows(SecurityException.class,
+            () -> taskService.deleteTask(taskId, requesterId),
+            "Должно быть выброшено SecurityException когда пользователь не является владельцем задачи");
+
+        // Проверяем сообщение об ошибке
+        assertTrue(exception.getMessage().contains("does not have permission to modify task"));
+        assertTrue(exception.getMessage().contains(requesterId.toString()));
+        assertTrue(exception.getMessage().contains(taskId.toString()));
+
+        // Проверяем, что задача НЕ была удалена
+        verify(taskRepository, never()).deleteById(any());
     }
 }
 

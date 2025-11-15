@@ -1,10 +1,6 @@
 package com.max.productivity.identity.domain;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 
@@ -14,10 +10,6 @@ import java.time.Instant;
  */
 @Entity
 @Table(name = "users")
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class User {
 
     /**
@@ -45,17 +37,85 @@ public class User {
      * Дата и время регистрации пользователя в системе.
      */
     private Instant registeredAt;
-}
 
-        this.email = email;
+    // Constructors
+    public User() {
     }
 
-    public String getPassword() {
-        return password;
+    public User(Long id, Long messengerId, String userName, Instant registeredAt) {
+        this.id = id;
+        this.messengerId = messengerId;
+        this.userName = userName;
+        this.registeredAt = registeredAt;
     }
 
-    public void setPassword(String password) {
-        this.password = password;
+    // Getters and Setters
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Long getMessengerId() {
+        return messengerId;
+    }
+
+    public void setMessengerId(Long messengerId) {
+        this.messengerId = messengerId;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public Instant getRegisteredAt() {
+        return registeredAt;
+    }
+
+    public void setRegisteredAt(Instant registeredAt) {
+        this.registeredAt = registeredAt;
+    }
+
+    // Builder
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private Long id;
+        private Long messengerId;
+        private String userName;
+        private Instant registeredAt;
+
+        public Builder id(Long id) {
+            this.id = id;
+            return this;
+        }
+
+        public Builder messengerId(Long messengerId) {
+            this.messengerId = messengerId;
+            return this;
+        }
+
+        public Builder userName(String userName) {
+            this.userName = userName;
+            return this;
+        }
+
+        public Builder registeredAt(Instant registeredAt) {
+            this.registeredAt = registeredAt;
+            return this;
+        }
+
+        public User build() {
+            return new User(id, messengerId, userName, registeredAt);
+        }
     }
 }
 

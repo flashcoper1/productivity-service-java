@@ -74,9 +74,13 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public TaskDto updateTask(Long id, TaskDto taskDto) {
+    public TaskDto updateTask(Long id, TaskDto taskDto, Long requesterId) {
         Task task = taskRepository.findById(id)
             .orElseThrow(() -> new TaskNotFoundException(id));
+
+        if (!task.getOwnerId().equals(requesterId)) {
+            throw new SecurityException("User " + requesterId + " does not have permission to modify task " + id);
+        }
 
         task.setTitle(taskDto.title());
         task.setDescription(taskDto.description());
@@ -89,18 +93,26 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public void deleteTask(Long id) {
-        if (!taskRepository.existsById(id)) {
-            throw new TaskNotFoundException(id);
+    public void deleteTask(Long id, Long requesterId) {
+        Task task = taskRepository.findById(id)
+            .orElseThrow(() -> new TaskNotFoundException(id));
+
+        if (!task.getOwnerId().equals(requesterId)) {
+            throw new SecurityException("User " + requesterId + " does not have permission to modify task " + id);
         }
+
         taskRepository.deleteById(id);
     }
 
     @Override
-    public void delegateTask(Long taskId, Long targetUserId) {
+    public void delegateTask(Long taskId, Long targetUserId, Long requesterId) {
         // 1. Найти задачу или выбросить TaskNotFoundException
         Task task = taskRepository.findById(taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
+
+        if (!task.getOwnerId().equals(requesterId)) {
+            throw new SecurityException("User " + requesterId + " does not have permission to modify task " + taskId);
+        }
 
         // 2. Проверить существование пользователя по внутреннему ID через identityService
         if (!identityService.userExistsById(targetUserId)) {
@@ -127,10 +139,14 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public void completeTask(Long taskId) {
+    public void completeTask(Long taskId, Long requesterId) {
         // 1. Найти задачу или выбросить TaskNotFoundException
         Task task = taskRepository.findById(taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
+
+        if (!task.getOwnerId().equals(requesterId)) {
+            throw new SecurityException("User " + requesterId + " does not have permission to modify task " + taskId);
+        }
 
         // 2. Установить статус задачи в 'COMPLETED'
         task.setStatus("COMPLETED");

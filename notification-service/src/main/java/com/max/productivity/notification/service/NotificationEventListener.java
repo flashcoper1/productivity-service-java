@@ -7,6 +7,7 @@ import com.max.productivity.task.event.TaskCompletedEvent;
 import com.max.productivity.task.event.TaskCreatedEvent;
 import com.max.productivity.task.event.TaskDelegatedEvent;
 import com.max.productivity.task.service.TaskService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import ru.max.botapi.client.MaxClient;
@@ -20,17 +21,13 @@ import java.util.Optional;
  * Реагирует на события создания задач и отправляет уведомления пользователям.
  */
 @Service
+@RequiredArgsConstructor
 public class NotificationEventListener {
 
     private final MaxClient maxClient;
     private final IdentityService identityService;
     private final TaskService taskService;
 
-    public NotificationEventListener(MaxClient maxClient, IdentityService identityService, TaskService taskService) {
-        this.maxClient = maxClient;
-        this.identityService = identityService;
-        this.taskService = taskService;
-    }
 
     /**
      * Обрабатывает событие создания задачи.

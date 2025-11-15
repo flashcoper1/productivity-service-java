@@ -50,18 +50,20 @@ public interface TaskService {
      *
      * @param id идентификатор задачи для обновления
      * @param taskDto DTO с новыми данными задачи
+     * @param requesterId идентификатор пользователя, выполняющего обновление
      * @return обновлённое DTO задачи
      * @throws com.max.productivity.common.exception.TaskNotFoundException если задача не найдена
      */
-    TaskDto updateTask(Long id, TaskDto taskDto);
+    TaskDto updateTask(Long id, TaskDto taskDto, Long requesterId);
 
     /**
      * Удаляет задачу по её идентификатору.
      *
      * @param id идентификатор задачи для удаления
+     * @param requesterId идентификатор пользователя, выполняющего удаление
      * @throws com.max.productivity.common.exception.TaskNotFoundException если задача не найдена
      */
-    void deleteTask(Long id);
+    void deleteTask(Long id, Long requesterId);
 
     /**
      * Делегирует задачу другому пользователю.
@@ -70,10 +72,11 @@ public interface TaskService {
      *
      * @param taskId идентификатор задачи для делегирования
      * @param targetUserId идентификатор пользователя, которому делегируется задача
+     * @param requesterId идентификатор пользователя, выполняющего делегирование
      * @throws com.max.productivity.common.exception.TaskNotFoundException если задача не найдена
      * @throws com.max.productivity.identity.exception.UserNotFoundException если целевой пользователь не найден
      */
-    void delegateTask(Long taskId, Long targetUserId)
+    void delegateTask(Long taskId, Long targetUserId, Long requesterId)
         throws com.max.productivity.common.exception.TaskNotFoundException,
                com.max.productivity.identity.exception.UserNotFoundException;
 
@@ -82,9 +85,10 @@ public interface TaskService {
      * Устанавливает статус задачи в "COMPLETED" и публикует событие TaskCompletedEvent.
      *
      * @param taskId идентификатор задачи для завершения
+     * @param requesterId идентификатор пользователя, выполняющего завершение задачи
      * @throws com.max.productivity.common.exception.TaskNotFoundException если задача не найдена
      */
-    void completeTask(Long taskId)
+    void completeTask(Long taskId, Long requesterId)
         throws com.max.productivity.common.exception.TaskNotFoundException;
 }
 

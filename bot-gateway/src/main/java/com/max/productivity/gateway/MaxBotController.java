@@ -44,34 +44,32 @@ public class MaxBotController {
      */
     @CommandHandler("/addTask")
     public void handleAddTask(Message message) {
-        // Автоматическая регистрация пользователя
         Long messengerId = message.getFrom().getUserId();
         String userName = message.getFrom().getUsername();
 
-        UserDto user = identityService.findOrCreateUser(messengerId, userName);
+        try {
+            UserDto user = identityService.findOrCreateUser(messengerId, userName);
 
-        // Извлекаем текст сообщения
-        String messageText = message.getBody().getText();
+            String messageText = message.getBody().getText();
+            String taskTitle = extractTaskTitle(messageText);
 
-        // Парсим название задачи (берем весь текст после команды "/addTask ")
-        String taskTitle = extractTaskTitle(messageText);
+            CreateTaskRequest request = new CreateTaskRequest(
+                taskTitle,
+                0,
+                null,
+                user.id()
+            );
 
-        // Создаем запрос на создание задачи с использованием внутреннего ID пользователя
-        CreateTaskRequest request = new CreateTaskRequest(
-            taskTitle,
-            0,  // priority по умолчанию
-            null,  // dueDate пока не указываем
-            user.id()  // Используем внутренний ID пользователя
-        );
-
-        // Создаем задачу
-        TaskDto createdTask = taskService.createTask(request);
-
-        // Отправляем подтверждение пользователю
-        String responseText = "✅ Задача создана: " + createdTask.title();
-        new SendMessageQuery(maxClient, new NewMessageBody(responseText))
-            .userId(messengerId)
-            .execute();
+            taskService.createTask(request);
+        } catch (TaskNotFoundException e) {
+            sendMessage(messengerId, "❌ Задача не найдена: " + e.getMessage());
+        } catch (UserNotFoundException e) {
+            sendMessage(messengerId, "❌ Пользователь не найден: " + e.getMessage());
+        } catch (SecurityException e) {
+            sendMessage(messengerId, "⛔ Недостаточно прав: " + e.getMessage());
+        } catch (Exception e) {
+            sendMessage(messengerId, "❌ Произошла ошибка при создании задачи: " + (e.getMessage() != null ? e.getMessage() : "неизвестная ошибка"));
+        }
     }
 
     /**
@@ -81,37 +79,38 @@ public class MaxBotController {
      */
     @CommandHandler("/myTasks")
     public void handleGetMyTasks(Message message) {
-        // Автоматическая регистрация пользователя
         Long messengerId = message.getFrom().getUserId();
         String userName = message.getFrom().getUsername();
 
-        UserDto user = identityService.findOrCreateUser(messengerId, userName);
+        try {
+            UserDto user = identityService.findOrCreateUser(messengerId, userName);
 
-        // Получаем задачи пользователя по внутреннему ID
-        List<TaskDto> tasks = taskService.getTasksForUser(user.id());
+            List<TaskDto> tasks = taskService.getTasksForUser(user.id());
 
-        // Создаем StringBuilder для форматирования ответа
-        StringBuilder response = new StringBuilder();
-
-        // Если список задач пуст
-        if (tasks.isEmpty()) {
-            response.append("У вас нет активных задач.");
-        } else {
-            // Если задачи есть, итерируемся по списку
-            response.append("Ваши задачи:\n");
-            for (TaskDto task : tasks) {
-                response.append("• ")
-                    .append(task.title())
-                    .append(" (Приоритет: ")
-                    .append(task.priority())
-                    .append(")\n");
+            StringBuilder response = new StringBuilder();
+            if (tasks.isEmpty()) {
+                response.append("У вас нет активных задач.");
+            } else {
+                response.append("Ваши задачи:\n");
+                for (TaskDto task : tasks) {
+                    response.append("• ")
+                        .append(task.title())
+                        .append(" (Приоритет: ")
+                        .append(task.priority())
+                        .append(")\n");
+                }
             }
-        }
 
-        // Отправляем отформатированное сообщение
-        new SendMessageQuery(maxClient, new NewMessageBody(response.toString()))
-            .userId(messengerId)
-            .execute();
+            sendMessage(messengerId, response.toString());
+        } catch (TaskNotFoundException e) {
+            sendMessage(messengerId, "❌ Задача не найдена: " + e.getMessage());
+        } catch (UserNotFoundException e) {
+            sendMessage(messengerId, "❌ Пользователь не найден: " + e.getMessage());
+        } catch (SecurityException e) {
+            sendMessage(messengerId, "⛔ Недостаточно прав: " + e.getMessage());
+        } catch (Exception e) {
+            sendMessage(messengerId, "❌ Произошла ошибка при получении задач: " + (e.getMessage() != null ? e.getMessage() : "неизвестная ошибка"));
+        }
     }
 
     /**
@@ -123,61 +122,33 @@ public class MaxBotController {
      */
     @CommandHandler("/delegate")
     public void handleDelegateTask(Message message) {
-        // Автоматическая регистрация пользователя
         Long messengerId = message.getFrom().getUserId();
         String userName = message.getFrom().getUsername();
 
-        UserDto user = identityService.findOrCreateUser(messengerId, userName);
-
-        String messageText = message.getBody().getText();
-
         try {
-            // Парсим taskId и targetUserId из текста команды "/delegate 101 5005"
-            String[] parts = messageText.trim().split("\\s+");
+            UserDto user = identityService.findOrCreateUser(messengerId, userName);
+            String messageText = message.getBody().getText();
 
+            String[] parts = messageText.trim().split("\\s+");
             if (parts.length < 3) {
-                String errorMsg = "Неверный формат команды. Используйте: /delegate {taskId} {targetUserId}";
-                new SendMessageQuery(maxClient, new NewMessageBody(errorMsg))
-                    .userId(messengerId)
-                    .execute();
+                sendMessage(messengerId, "Неверный формат команды. Используйте: /delegate {taskId} {targetUserId}");
                 return;
             }
 
             Long taskId = Long.parseLong(parts[1]);
             Long targetUserId = Long.parseLong(parts[2]);
 
-            // Вызываем сервис для делегирования задачи (используем внутренний ID)
-            taskService.delegateTask(taskId, targetUserId);
-
-            // Формируем сообщение об успехе
-            String successMsg = "✅ Задача #" + taskId + " успешно делегирована пользователю #" + targetUserId;
-            new SendMessageQuery(maxClient, new NewMessageBody(successMsg))
-                .userId(messengerId)
-                .execute();
-
+            taskService.delegateTask(taskId, targetUserId, user.id());
         } catch (NumberFormatException e) {
-            String errorMsg = "❌ Ошибка: ID задачи и ID пользователя должны быть числами";
-            new SendMessageQuery(maxClient, new NewMessageBody(errorMsg))
-                .userId(messengerId)
-                .execute();
-
+            sendMessage(messengerId, "❌ Ошибка: ID задачи и ID пользователя должны быть числами");
         } catch (TaskNotFoundException e) {
-            String errorMsg = "❌ Задача не найдена: " + e.getMessage();
-            new SendMessageQuery(maxClient, new NewMessageBody(errorMsg))
-                .userId(messengerId)
-                .execute();
-
+            sendMessage(messengerId, "❌ Задача не найдена: " + e.getMessage());
         } catch (UserNotFoundException e) {
-            String errorMsg = "❌ Пользователь не найден: " + e.getMessage();
-            new SendMessageQuery(maxClient, new NewMessageBody(errorMsg))
-                .userId(messengerId)
-                .execute();
-
+            sendMessage(messengerId, "❌ Пользователь не найден: " + e.getMessage());
+        } catch (SecurityException e) {
+            sendMessage(messengerId, "⛔ Недостаточно прав: " + e.getMessage());
         } catch (Exception e) {
-            String errorMsg = "❌ Произошла ошибка при делегировании задачи: " + e.getMessage();
-            new SendMessageQuery(maxClient, new NewMessageBody(errorMsg))
-                .userId(messengerId)
-                .execute();
+            sendMessage(messengerId, "❌ Произошла ошибка при делегировании задачи: " + (e.getMessage() != null ? e.getMessage() : "неизвестная ошибка"));
         }
     }
 
@@ -190,54 +161,32 @@ public class MaxBotController {
      */
     @CommandHandler("/complete")
     public void handleCompleteTask(Message message) {
-        // Автоматическая регистрация пользователя
         Long messengerId = message.getFrom().getUserId();
         String userName = message.getFrom().getUsername();
 
-        UserDto user = identityService.findOrCreateUser(messengerId, userName);
-
-        String messageText = message.getBody().getText();
-
         try {
-            // Парсим taskId из текста команды "/complete 101"
-            String[] parts = messageText.trim().split("\\s+");
+            UserDto user = identityService.findOrCreateUser(messengerId, userName);
+            String messageText = message.getBody().getText();
 
+            String[] parts = messageText.trim().split("\\s+");
             if (parts.length < 2) {
-                String errorMsg = "Неверный формат команды. Используйте: /complete {taskId}";
-                new SendMessageQuery(maxClient, new NewMessageBody(errorMsg))
-                    .userId(messengerId)
-                    .execute();
+                sendMessage(messengerId, "Неверный формат команды. Используйте: /complete {taskId}");
                 return;
             }
 
             Long taskId = Long.parseLong(parts[1]);
 
-            // Вызываем сервис для завершения задачи
-            taskService.completeTask(taskId);
-
-            // Формируем сообщение об успехе
-            String successMsg = "🎉 Задача #" + taskId + " успешно завершена!";
-            new SendMessageQuery(maxClient, new NewMessageBody(successMsg))
-                .userId(messengerId)
-                .execute();
-
+            taskService.completeTask(taskId, user.id());
         } catch (NumberFormatException e) {
-            String errorMsg = "❌ Ошибка: ID задачи должен быть числом";
-            new SendMessageQuery(maxClient, new NewMessageBody(errorMsg))
-                .userId(messengerId)
-                .execute();
-
+            sendMessage(messengerId, "❌ Ошибка: ID задачи должен быть числом");
         } catch (TaskNotFoundException e) {
-            String errorMsg = "❌ Задача не найдена: " + e.getMessage();
-            new SendMessageQuery(maxClient, new NewMessageBody(errorMsg))
-                .userId(messengerId)
-                .execute();
-
+            sendMessage(messengerId, "❌ Задача не найдена: " + e.getMessage());
+        } catch (UserNotFoundException e) {
+            sendMessage(messengerId, "❌ Пользователь не найден: " + e.getMessage());
+        } catch (SecurityException e) {
+            sendMessage(messengerId, "⛔ Недостаточно прав: " + e.getMessage());
         } catch (Exception e) {
-            String errorMsg = "❌ Произошла ошибка при завершении задачи: " + e.getMessage();
-            new SendMessageQuery(maxClient, new NewMessageBody(errorMsg))
-                .userId(messengerId)
-                .execute();
+            sendMessage(messengerId, "❌ Произошла ошибка при завершении задачи: " + (e.getMessage() != null ? e.getMessage() : "неизвестная ошибка"));
         }
     }
 
@@ -248,14 +197,18 @@ public class MaxBotController {
      * @return название задачи
      */
     private String extractTaskTitle(String messageText) {
-        // Простая логика парсинга: берем все после команды "/addTask "
         if (messageText != null && messageText.startsWith("/addTask ")) {
             return messageText.substring("/addTask ".length()).trim();
         }
         return messageText != null ? messageText.trim() : "";
     }
 
-    // ...existing code...
+    // Вспомогательный метод для отправки сообщений пользователю
+    private void sendMessage(Long messengerId, String text) {
+        new SendMessageQuery(maxClient, new NewMessageBody(text))
+            .userId(messengerId)
+            .execute();
+    }
 
     /**
      * Получает все задачи пользователя.
@@ -295,21 +248,23 @@ public class MaxBotController {
      *
      * @param id идентификатор задачи
      * @param taskDto новые данные задачи
+     * @param requesterId внутренний ID пользователя, выполняющего обновление
      * @return обновлённая задача
      */
     @PutMapping("/tasks/{id}")
-    public TaskDto updateTask(@PathVariable Long id, @RequestBody TaskDto taskDto) {
-        return taskService.updateTask(id, taskDto);
+    public TaskDto updateTask(@PathVariable Long id, @RequestBody TaskDto taskDto, @RequestParam Long requesterId) {
+        return taskService.updateTask(id, taskDto, requesterId);
     }
 
     /**
      * Удаляет задачу.
      *
      * @param id идентификатор задачи
+     * @param requesterId внутренний ID пользователя, выполняющего удаление
      */
     @DeleteMapping("/tasks/{id}")
-    public void deleteTask(@PathVariable Long id) {
-        taskService.deleteTask(id);
+    public void deleteTask(@PathVariable Long id, @RequestParam Long requesterId) {
+        taskService.deleteTask(id, requesterId);
     }
 }
 

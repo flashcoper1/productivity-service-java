@@ -19,11 +19,16 @@
         </dependency>
         <dependency>
             <groupId>ru.max</groupId>
-            <artifactId>max-bot-api</artifactId>
+            <artifactId>max-bot-sdk</artifactId>
         </dependency>
         <dependency>
             <groupId>com.max.productivity</groupId>
             <artifactId>task-service</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.max.productivity</groupId>
+            <artifactId>identity-service</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>
