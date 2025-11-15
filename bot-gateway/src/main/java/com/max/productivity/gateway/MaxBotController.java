@@ -3,14 +3,17 @@ package com.max.productivity.gateway;
 import com.max.productivity.common.dto.TaskDto;
 import com.max.productivity.common.dto.UserDto;
 import com.max.productivity.common.exception.TaskNotFoundException;
-import com.max.productivity.gateway.annotation.CommandHandler;
-import com.max.productivity.gateway.model.Message;
 import com.max.productivity.identity.exception.UserNotFoundException;
 import com.max.productivity.identity.service.IdentityService;
 import com.max.productivity.task.dto.CreateTaskRequest;
 import com.max.productivity.task.service.TaskService;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.*;
+import ru.max.botapi.annotation.CommandHandler;
+import ru.max.botapi.client.MaxClient;
+import ru.max.botapi.model.Message;
+import ru.max.botapi.model.NewMessageBody;
+import ru.max.botapi.queries.SendMessageQuery;
 
 import java.util.List;
 
@@ -26,10 +29,12 @@ public class MaxBotController {
 
     private final TaskService taskService;
     private final IdentityService identityService;
+    private final MaxClient maxClient;
 
-    public MaxBotController(TaskService taskService, IdentityService identityService) {
+    public MaxBotController(TaskService taskService, IdentityService identityService, MaxClient maxClient) {
         this.taskService = taskService;
         this.identityService = identityService;
+        this.maxClient = maxClient;
     }
 
     /**
@@ -62,8 +67,11 @@ public class MaxBotController {
         // Создаем задачу
         TaskDto createdTask = taskService.createTask(request);
 
-        // TODO: Реализовать отправку подтверждения пользователю
-        System.out.println("Задача создана для пользователя " + user.userName() + " (ID: " + user.id() + "): " + createdTask.title());
+        // Отправляем подтверждение пользователю
+        String responseText = "✅ Задача создана: " + createdTask.title();
+        new SendMessageQuery(maxClient, new NewMessageBody(responseText))
+            .userId(messengerId)
+            .execute();
     }
 
     /**
@@ -100,8 +108,10 @@ public class MaxBotController {
             }
         }
 
-        // TODO: Реализовать отправку отформатированного сообщения через max-bot-sdk
-        System.out.println(response.toString());
+        // Отправляем отформатированное сообщение
+        new SendMessageQuery(maxClient, new NewMessageBody(response.toString()))
+            .userId(messengerId)
+            .execute();
     }
 
     /**
@@ -127,8 +137,9 @@ public class MaxBotController {
 
             if (parts.length < 3) {
                 String errorMsg = "Неверный формат команды. Используйте: /delegate {taskId} {targetUserId}";
-                System.out.println(errorMsg);
-                // TODO: Отправить сообщение об ошибке пользователю через max-bot-sdk
+                new SendMessageQuery(maxClient, new NewMessageBody(errorMsg))
+                    .userId(messengerId)
+                    .execute();
                 return;
             }
 
@@ -140,29 +151,33 @@ public class MaxBotController {
 
             // Формируем сообщение об успехе
             String successMsg = "✅ Задача #" + taskId + " успешно делегирована пользователю #" + targetUserId;
-            System.out.println(successMsg);
-
-            // TODO: Отправить подтверждение пользователю через max-bot-sdk
+            new SendMessageQuery(maxClient, new NewMessageBody(successMsg))
+                .userId(messengerId)
+                .execute();
 
         } catch (NumberFormatException e) {
             String errorMsg = "❌ Ошибка: ID задачи и ID пользователя должны быть числами";
-            System.out.println(errorMsg);
-            // TODO: Отправить сообщение об ошибке пользователю через max-bot-sdk
+            new SendMessageQuery(maxClient, new NewMessageBody(errorMsg))
+                .userId(messengerId)
+                .execute();
 
         } catch (TaskNotFoundException e) {
             String errorMsg = "❌ Задача не найдена: " + e.getMessage();
-            System.out.println(errorMsg);
-            // TODO: Отправить сообщение об ошибке пользователю через max-bot-sdk
+            new SendMessageQuery(maxClient, new NewMessageBody(errorMsg))
+                .userId(messengerId)
+                .execute();
 
         } catch (UserNotFoundException e) {
             String errorMsg = "❌ Пользователь не найден: " + e.getMessage();
-            System.out.println(errorMsg);
-            // TODO: Отправить сообщение об ошибке пользователю через max-bot-sdk
+            new SendMessageQuery(maxClient, new NewMessageBody(errorMsg))
+                .userId(messengerId)
+                .execute();
 
         } catch (Exception e) {
             String errorMsg = "❌ Произошла ошибка при делегировании задачи: " + e.getMessage();
-            System.out.println(errorMsg);
-            // TODO: Отправить сообщение об ошибке пользователю через max-bot-sdk
+            new SendMessageQuery(maxClient, new NewMessageBody(errorMsg))
+                .userId(messengerId)
+                .execute();
         }
     }
 
@@ -189,8 +204,9 @@ public class MaxBotController {
 
             if (parts.length < 2) {
                 String errorMsg = "Неверный формат команды. Используйте: /complete {taskId}";
-                System.out.println(errorMsg);
-                // TODO: Отправить сообщение об ошибке пользователю через max-bot-sdk
+                new SendMessageQuery(maxClient, new NewMessageBody(errorMsg))
+                    .userId(messengerId)
+                    .execute();
                 return;
             }
 
@@ -201,24 +217,27 @@ public class MaxBotController {
 
             // Формируем сообщение об успехе
             String successMsg = "🎉 Задача #" + taskId + " успешно завершена!";
-            System.out.println(successMsg);
-
-            // TODO: Отправить подтверждение пользователю через max-bot-sdk
+            new SendMessageQuery(maxClient, new NewMessageBody(successMsg))
+                .userId(messengerId)
+                .execute();
 
         } catch (NumberFormatException e) {
             String errorMsg = "❌ Ошибка: ID задачи должен быть числом";
-            System.out.println(errorMsg);
-            // TODO: Отправить сообщение об ошибке пользователю через max-bot-sdk
+            new SendMessageQuery(maxClient, new NewMessageBody(errorMsg))
+                .userId(messengerId)
+                .execute();
 
         } catch (TaskNotFoundException e) {
             String errorMsg = "❌ Задача не найдена: " + e.getMessage();
-            System.out.println(errorMsg);
-            // TODO: Отправить сообщение об ошибке пользователю через max-bot-sdk
+            new SendMessageQuery(maxClient, new NewMessageBody(errorMsg))
+                .userId(messengerId)
+                .execute();
 
         } catch (Exception e) {
             String errorMsg = "❌ Произошла ошибка при завершении задачи: " + e.getMessage();
-            System.out.println(errorMsg);
-            // TODO: Отправить сообщение об ошибке пользователю через max-bot-sdk
+            new SendMessageQuery(maxClient, new NewMessageBody(errorMsg))
+                .userId(messengerId)
+                .execute();
         }
     }
 

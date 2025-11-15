@@ -1,10 +1,19 @@
 package com.max.productivity.notification.service;
 
+import com.max.productivity.common.dto.TaskDto;
+import com.max.productivity.common.dto.UserDto;
+import com.max.productivity.identity.service.IdentityService;
 import com.max.productivity.task.event.TaskCompletedEvent;
 import com.max.productivity.task.event.TaskCreatedEvent;
 import com.max.productivity.task.event.TaskDelegatedEvent;
+import com.max.productivity.task.service.TaskService;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
+import ru.max.botapi.client.MaxClient;
+import ru.max.botapi.model.NewMessageBody;
+import ru.max.botapi.queries.SendMessageQuery;
+
+import java.util.Optional;
 
 /**
  * Слушатель событий для асинхронной обработки уведомлений.
@@ -12,6 +21,16 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class NotificationEventListener {
+
+    private final MaxClient maxClient;
+    private final IdentityService identityService;
+    private final TaskService taskService;
+
+    public NotificationEventListener(MaxClient maxClient, IdentityService identityService, TaskService taskService) {
+        this.maxClient = maxClient;
+        this.identityService = identityService;
+        this.taskService = taskService;
+    }
 
     /**
      * Обрабатывает событие создания задачи.
@@ -21,7 +40,23 @@ public class NotificationEventListener {
      */
     @EventListener
     public void handleTaskCreated(TaskCreatedEvent event) {
-        // ...existing code...
+        Long taskId = event.getTaskId();
+
+        // Получаем информацию о задаче
+        TaskDto task = taskService.getTaskById(taskId);
+
+        // Получаем владельца задачи
+        Long ownerId = task.assignedToUserId();
+        Optional<UserDto> userOpt = identityService.findUserById(ownerId);
+
+        if (userOpt.isPresent()) {
+            UserDto user = userOpt.get();
+            String message = "✅ Задача создана: " + task.title();
+
+            new SendMessageQuery(maxClient, new NewMessageBody(message))
+                .userId(user.messengerId())
+                .execute();
+        }
     }
 
     /**
@@ -32,31 +67,31 @@ public class NotificationEventListener {
      */
     @EventListener
     public void handleTaskDelegated(TaskDelegatedEvent event) {
-        // Извлекаем данные из события
         Long taskId = event.getTaskId();
         Long previousOwnerId = event.getPreviousOwnerId();
         Long newOwnerId = event.getNewOwnerId();
 
-        // Логируем получение события
-        System.out.println("Задача " + taskId + " делегирована пользователю " + newOwnerId);
+        // Отправляем уведомление новому владельцу
+        Optional<UserDto> newOwnerOpt = identityService.findUserById(newOwnerId);
+        if (newOwnerOpt.isPresent()) {
+            UserDto newOwner = newOwnerOpt.get();
+            String message = "📋 Вам делегирована задача #" + taskId;
 
-        // TODO: Интеграция с max-bot-sdk для отправки уведомлений
-        // Отправить уведомление новому владельцу
-        // maxBotClient.sendMessage(
-        //     newOwnerId,
-        //     "📋 Вам делегирована задача #" + taskId
-        // );
+            new SendMessageQuery(maxClient, new NewMessageBody(message))
+                .userId(newOwner.messengerId())
+                .execute();
+        }
 
-        // Отправить уведомление предыдущему владельцу
-        // maxBotClient.sendMessage(
-        //     previousOwnerId,
-        //     "📤 Вы делегировали задачу #" + taskId + " пользователю #" + newOwnerId
-        // );
+        // Отправляем уведомление предыдущему владельцу
+        Optional<UserDto> previousOwnerOpt = identityService.findUserById(previousOwnerId);
+        if (previousOwnerOpt.isPresent()) {
+            UserDto previousOwner = previousOwnerOpt.get();
+            String message = "📤 Вы делегировали задачу #" + taskId + " пользователю #" + newOwnerId;
 
-        // Дополнительная информация для отладки
-        System.out.println("Предыдущий владелец: " + previousOwnerId);
-        System.out.println("Новый владелец: " + newOwnerId);
-        System.out.println("Источник события: " + event.getSource().getClass().getSimpleName());
+            new SendMessageQuery(maxClient, new NewMessageBody(message))
+                .userId(previousOwner.messengerId())
+                .execute();
+        }
     }
 
     /**
@@ -67,21 +102,23 @@ public class NotificationEventListener {
      */
     @EventListener
     public void handleTaskCompleted(TaskCompletedEvent event) {
-        // Извлекаем taskId из события
         Long taskId = event.getTaskId();
 
-        // Логируем получение события
-        System.out.println("Задача " + taskId + " завершена");
+        // Получаем информацию о задаче
+        TaskDto task = taskService.getTaskById(taskId);
 
-        // TODO: Интеграция с max-bot-sdk для отправки поздравления
-        // maxBotClient.sendMessage(
-        //     ownerId,
-        //     "🎉 Поздравляем! Задача #" + taskId + " успешно завершена!"
-        // );
+        // Получаем владельца задачи
+        Long ownerId = task.assignedToUserId();
+        Optional<UserDto> userOpt = identityService.findUserById(ownerId);
 
-        // Дополнительная информация для отладки
-        System.out.println("Источник события: " + event.getSource().getClass().getSimpleName());
-        System.out.println("Временная метка: " + event.getTimestamp());
+        if (userOpt.isPresent()) {
+            UserDto user = userOpt.get();
+            String message = "🎉 Поздравляем! Задача #" + taskId + " '" + task.title() + "' успешно завершена!";
+
+            new SendMessageQuery(maxClient, new NewMessageBody(message))
+                .userId(user.messengerId())
+                .execute();
+        }
     }
 }
 

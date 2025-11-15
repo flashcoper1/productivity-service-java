@@ -60,6 +60,12 @@ public class IdentityServiceImpl implements IdentityService {
             .map(this::mapToDto);
     }
 
+    @Override
+    public Optional<UserDto> findUserById(Long userId) {
+        return userRepository.findById(userId)
+            .map(this::mapToDto);
+    }
+
     /**
      * Преобразует сущность User в DTO.
      *

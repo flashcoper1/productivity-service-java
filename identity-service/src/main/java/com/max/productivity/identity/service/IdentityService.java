@@ -43,5 +43,13 @@ public interface IdentityService {
      * @return Optional с DTO пользователя, если найден, иначе пустой Optional
      */
     Optional<UserDto> findUserByMessengerId(Long messengerId);
+
+    /**
+     * Находит пользователя по внутреннему ID.
+     *
+     * @param userId внутренний идентификатор пользователя
+     * @return Optional с DTO пользователя, если найден, иначе пустой Optional
+     */
+    Optional<UserDto> findUserById(Long userId);
 }
 

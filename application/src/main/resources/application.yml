@@ -1,0 +1,26 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: productivity-service
+  datasource:
+    url: jdbc:h2:mem:productivitydb
+    driverClassName: org.h2.Driver
+    username: sa
+    password: ''
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+max-bot:
+  token: ${MAX_BOT_TOKEN:YOUR_TOKEN_HERE}
+  api-url: https://api.max.ru/bot/v1
+
+

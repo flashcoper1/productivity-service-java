@@ -18,6 +18,10 @@
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
         <dependency>
+            <groupId>ru.max</groupId>
+            <artifactId>max-bot-api</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.max.productivity</groupId>
             <artifactId>task-service</artifactId>
             <version>${project.version}</version>
