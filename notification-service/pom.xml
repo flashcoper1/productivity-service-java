@@ -19,7 +19,7 @@
         </dependency>
         <dependency>
             <groupId>ru.max</groupId>
-            <artifactId>max-bot-sdk</artifactId>
+            <artifactId>max-bot-api</artifactId>
         </dependency>
         <dependency>
             <groupId>com.max.productivity</groupId>

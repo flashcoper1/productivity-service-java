@@ -9,7 +9,7 @@ import com.max.productivity.task.dto.CreateTaskRequest;
 import com.max.productivity.task.service.TaskService;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.*;
-import ru.max.botapi.annotation.CommandHandler;
+import ru.max.bot.annotations.CommandHandler;
 import ru.max.botapi.client.MaxClient;
 import ru.max.botapi.model.Message;
 import ru.max.botapi.model.NewMessageBody;

@@ -1,61 +1,107 @@
 # Max Bot SDK Setup Instructions
 
-## Проблема
-Зависимость `ru.max:max-bot-sdk:0.0.6-SNAPSHOT` не найдена в публичных Maven репозиториях.
+## ⚠️ ВАЖНО: Требуется установка Max Bot SDK
 
-## Решения
+Проект требует локально установленный **Max Bot SDK версии 0.0.6-SNAPSHOT**.
 
-### Вариант 1: Установка из локального файла (если у вас есть JAR)
+## Статус зависимостей
+
+Проект использует следующие зависимости от Max Bot SDK:
+
+- `bot-gateway` → `ru.max:max-bot-sdk:0.0.6-SNAPSHOT`
+- `notification-service` → `ru.max:max-bot-api:0.0.6-SNAPSHOT`
+- `application` → зависит от `bot-gateway` и `notification-service`
+
+## Варианты установки
+
+### Вариант 1: Установка из локального файла JAR (рекомендуется)
+
+Если у вас есть JAR-файлы SDK:
+
 ```bash
+# Для max-bot-sdk
 mvn install:install-file \
   -Dfile=path/to/max-bot-sdk-0.0.6-SNAPSHOT.jar \
   -DgroupId=ru.max \
   -DartifactId=max-bot-sdk \
   -Dversion=0.0.6-SNAPSHOT \
   -Dpackaging=jar
+
+# Для max-bot-api
+mvn install:install-file \
+  -Dfile=path/to/max-bot-api-0.0.6-SNAPSHOT.jar \
+  -DgroupId=ru.max \
+  -DartifactId=max-bot-api \
+  -Dversion=0.0.6-SNAPSHOT \
+  -Dpackaging=jar
 ```
 
-### Вариант 2: Сборка из исходников (если есть доступ к GitHub)
+### Вариант 2: Сборка из исходников
+
+Если у вас есть доступ к репозиторию Max Bot SDK:
+
 ```bash
-git clone https://github.com/maxbot/max-bot-sdk.git
+git clone <URL репозитория max-bot-sdk>
 cd max-bot-sdk
 mvn clean install
 ```
 
-### Вариант 3: Использование release версии вместо SNAPSHOT
-Измените версию в `pom.xml` на release версию (если доступна):
-```xml
-<dependency>
-    <groupId>ru.max</groupId>
-    <artifactId>max-bot-sdk</artifactId>
-    <version>0.0.5</version> <!-- или другая доступная версия -->
-</dependency>
-```
+### Вариант 3: Временная сборка без bot-модулей
 
-### Вариант 4: Временное исключение модулей с зависимостью
-Собирайте проект без модулей, использующих max-bot-sdk:
+Если SDK недоступен, можно собрать только основные модули:
+
 ```bash
+# Сборка без модулей, требующих SDK
 mvn clean install -pl common,identity-service,task-service
+
+# Или использовать профиль (если настроен)
+mvn clean install -P without-bot
 ```
 
-## Текущий статус сборки
+## Структура проекта
 
-✅ **Успешно собраны модули:**
-- common
-- identity-service (8 тестов пройдено)
-- task-service (15 тестов пройдено)
+✅ **Модули без зависимости от SDK (всегда собираются):**
+- `common` - общие DTO и исключения
+- `identity-service` - управление пользователями (8 тестов)
+- `task-service` - управление задачами (15 тестов)
 
-⚠️ **Требуют max-bot-sdk:**
-- bot-gateway
-- notification-service
-- application
+⚠️ **Модули, требующие Max Bot SDK:**
+- `bot-gateway` - интеграция с Max Bot (контроллеры, обработчики команд)
+- `notification-service` - отправка уведомлений через бота
+- `application` - главное приложение, объединяющее все модули
 
-## Добавленные репозитории
-В `pom.xml` уже добавлены следующие репозитории:
-- https://s01.oss.sonatype.org/content/repositories/snapshots/
-- https://oss.sonatype.org/content/repositories/snapshots/
-- https://jitpack.io
+## Настроенные репозитории Maven
 
-## Рекомендация
-Свяжитесь с авторами Max Bot SDK для получения информации о корректном репозитории или актуальной версии библиотеки.
+В родительском `pom.xml` уже добавлены репозитории:
+
+- `https://oss.sonatype.org/content/repositories/snapshots` (для SNAPSHOT версий)
+- `https://oss.sonatype.org/content/repositories/releases` (для release версий)
+
+## Следующие шаги
+
+1. **Получите Max Bot SDK** от разработчиков или из корпоративного репозитория
+2. **Установите SDK** в локальный Maven репозиторий (см. Вариант 1 выше)
+3. **Запустите полную сборку:**
+   ```bash
+   mvn clean install
+   ```
+4. **Запустите приложение:**
+   ```bash
+   cd application
+   mvn spring-boot:run
+   ```
+
+## Проверка установки
+
+После установки SDK проверьте, что зависимости разрешены:
+
+```bash
+mvn dependency:tree -pl bot-gateway
+mvn dependency:tree -pl notification-service
+```
+
+## Контакты
+
+Для получения доступа к Max Bot SDK обратитесь к команде разработки Max Bot или вашему тимлиду.
+
 
