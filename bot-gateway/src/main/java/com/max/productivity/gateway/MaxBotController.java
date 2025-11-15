@@ -7,9 +7,9 @@ import com.max.productivity.identity.exception.UserNotFoundException;
 import com.max.productivity.identity.service.IdentityService;
 import com.max.productivity.task.dto.CreateTaskRequest;
 import com.max.productivity.task.service.TaskService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.*;
-import ru.max.bot.annotations.CommandHandler;
 import ru.max.botapi.client.MaxClient;
 import ru.max.botapi.model.Message;
 import ru.max.botapi.model.NewMessageBody;
@@ -22,6 +22,7 @@ import java.util.List;
  * Обрабатывает команды от пользователей и управляет задачами.
  * Автоматически регистрирует пользователей при первой команде.
  */
+@Slf4j
 @Component
 @RestController
 @RequestMapping("/api/bot")
@@ -42,12 +43,9 @@ public class MaxBotController {
      *
      * @param message сообщение от пользователя, содержащее команду и текст задачи
      */
-    @CommandHandler("/addTask")
     public void handleAddTask(Message message) {
-        // Игнорируем сообщения без текста (например, нажатие 'Start')
-        if (message.getBody() == null || message.getBody().getText() == null) {
-            return;
-        }
+
+        log.info("Получена команда от пользователя {}: {}", message.getSender().getUserId(), message.getBody().getText());
 
         Long messengerId = message.getSender().getUserId();
         String userName = message.getSender().getUsername();
@@ -82,12 +80,9 @@ public class MaxBotController {
      *
      * @param message сообщение от пользователя с командой
      */
-    @CommandHandler("/myTasks")
     public void handleGetMyTasks(Message message) {
-        // Игнорируем сообщения без текста (например, нажатие 'Start')
-        if (message.getBody() == null || message.getBody().getText() == null) {
-            return;
-        }
+
+        log.info("Получена команда от пользователя {}: {}", message.getSender().getUserId(), message.getBody().getText());
 
         Long messengerId = message.getSender().getUserId();
         String userName = message.getSender().getUsername();
@@ -130,12 +125,9 @@ public class MaxBotController {
      *
      * @param message сообщение от пользователя с командой
      */
-    @CommandHandler("/delegate")
     public void handleDelegateTask(Message message) {
-        // Игнорируем сообщения без текста (например, нажатие 'Start')
-        if (message.getBody() == null || message.getBody().getText() == null) {
-            return;
-        }
+
+        log.info("Получена команда от пользователя {}: {}", message.getSender().getUserId(), message.getBody().getText());
 
         Long messengerId = message.getSender().getUserId();
         String userName = message.getSender().getUsername();
@@ -174,12 +166,9 @@ public class MaxBotController {
      *
      * @param message сообщение от пользователя с командой
      */
-    @CommandHandler("/complete")
     public void handleCompleteTask(Message message) {
-        // Игнорируем сообщения без текста (например, нажатие 'Start')
-        if (message.getBody() == null || message.getBody().getText() == null) {
-            return;
-        }
+
+        log.info("Получена команда от пользователя {}: {}", message.getSender().getUserId(), message.getBody().getText());
 
         Long messengerId = message.getSender().getUserId();
         String userName = message.getSender().getUsername();
@@ -231,7 +220,7 @@ public class MaxBotController {
                 .execute();
         } catch (Exception e) {
             // Логируем ошибку, но не прерываем работу
-            System.err.println("Ошибка при отправке сообщения: " + e.getMessage());
+            log.error("Ошибка при отправке сообщения пользователю {}: {}", messengerId, e.getMessage(), e);
         }
     }
 
@@ -292,4 +281,3 @@ public class MaxBotController {
         taskService.deleteTask(id, requesterId);
     }
 }
-

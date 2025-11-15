@@ -23,4 +23,7 @@ max-bot:
   token: ${MAX_BOT_TOKEN:f9LHodD0cOIkhQjliqL3TnBOGzegGUpVckEBTay8DKvSf0AaIqe9IIFPGyqk7TwRGzOol5624AN0jq102b_8}
   api-url: https://api.max.ru/bot/v1
 
+logging:
+  level:
+    com.max.productivity: DEBUG
 

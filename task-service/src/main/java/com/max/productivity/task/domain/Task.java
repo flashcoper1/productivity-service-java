@@ -30,9 +30,11 @@ public class Task {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Builder.Default
     @Column(nullable = false)
     private String status = "TODO";
 
+    @Builder.Default
     private int priority = 0;
 
     private Instant createdAt;

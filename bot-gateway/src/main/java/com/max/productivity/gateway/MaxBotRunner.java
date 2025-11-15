@@ -6,13 +6,17 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
+import ru.max.bot.annotations.UpdateHandler;
 import ru.max.bot.longpolling.LongPollingBot;
 import ru.max.bot.longpolling.LongPollingBotOptions;
 import ru.max.botapi.client.MaxClient;
+import ru.max.botapi.model.Message;
+import ru.max.botapi.model.MessageCreatedUpdate;
 
 /**
  * Spring-компонент для управления жизненным циклом Long Polling бота.
  * Запускает бота при старте приложения и корректно останавливает при завершении.
+ * Парсит команды и явно вызывает методы контроллера.
  */
 @Slf4j
 @Component
@@ -42,10 +46,41 @@ public class MaxBotRunner implements CommandLineRunner, ApplicationListener<Cont
      */
     @Override
     public void run(String... args) throws Exception {
-        // Простая и чистая инициализация бота без анонимных классов и переопределений
-        this.bot = new LongPollingBot(maxClient, LongPollingBotOptions.DEFAULT, maxBotController);
+        // MaxBotRunner теперь сам обрабатывает команды и вызывает методы контроллера
+        this.bot = new LongPollingBot(maxClient, LongPollingBotOptions.DEFAULT, this);
         bot.start();
         log.info("Long Polling Bot успешно запущен");
+    }
+
+    /**
+     * Главный обработчик всех входящих сообщений.
+     * Парсит команды и явно вызывает соответствующие методы контроллера.
+     *
+     * @param update обновление с информацией о созданном сообщении
+     */
+    @UpdateHandler
+    public void handleMessageCreated(MessageCreatedUpdate update) {
+        Message message = update.getMessage();
+        if (message == null || message.getBody() == null || message.getBody().getText() == null) {
+            log.warn("Получено сообщение без текста, игнорируется.");
+            return;
+        }
+
+        String text = message.getBody().getText().trim();
+        log.info("Получено сообщение от {}: {}", message.getSender().getUserId(), text);
+
+        // Явный роутинг команд
+        if (text.startsWith("/addTask")) {
+            maxBotController.handleAddTask(message);
+        } else if (text.startsWith("/myTasks")) {
+            maxBotController.handleGetMyTasks(message);
+        } else if (text.startsWith("/complete")) {
+            maxBotController.handleCompleteTask(message);
+        } else if (text.startsWith("/delegate")) {
+            maxBotController.handleDelegateTask(message);
+        } else {
+            log.warn("Неизвестная команда или не-командное сообщение: {}", text);
+        }
     }
 
     /**

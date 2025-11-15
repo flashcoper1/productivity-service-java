@@ -21,6 +21,12 @@
             <groupId>ru.max</groupId>
             <artifactId>max-bot-sdk</artifactId>
         </dependency>
+        <!-- Зависимость из JitPack -->
+        <dependency>
+            <groupId>com.github.ArtemGet</groupId>
+            <artifactId>max-bot-sdk-java</artifactId>
+            <version>jitpack-f48f22a4c9-1</version>
+        </dependency>
         <dependency>
             <groupId>com.max.productivity</groupId>
             <artifactId>common</artifactId>
@@ -35,6 +41,11 @@
             <groupId>com.max.productivity</groupId>
             <artifactId>identity-service</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 
