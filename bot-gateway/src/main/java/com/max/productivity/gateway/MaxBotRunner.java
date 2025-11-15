@@ -1,19 +1,20 @@
 package com.max.productivity.gateway;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextClosedEvent;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import ru.max.bot.longpolling.LongPollingBot;
 import ru.max.bot.longpolling.LongPollingBotOptions;
 import ru.max.botapi.client.MaxClient;
-import ru.max.botapi.model.Update;
-import ru.max.botapi.model.MessageCreatedUpdate;
 
 /**
  * Spring-компонент для управления жизненным циклом Long Polling бота.
  * Запускает бота при старте приложения и корректно останавливает при завершении.
  */
+@Slf4j
 @Component
 public class MaxBotRunner implements CommandLineRunner, ApplicationListener<ContextClosedEvent> {
 
@@ -41,22 +42,10 @@ public class MaxBotRunner implements CommandLineRunner, ApplicationListener<Cont
      */
     @Override
     public void run(String... args) throws Exception {
-        this.bot = new LongPollingBot(maxClient, LongPollingBotOptions.DEFAULT, maxBotController) {
-            @Override
-            public Object onUpdate(Update update) {
-                // НАША ЗАЩИТА
-                if (update instanceof MessageCreatedUpdate mcu) {
-                    if (mcu.getMessage() == null || mcu.getMessage().getBody() == null) {
-                        // Игнорируем сервисные сообщения без тела (например, 'Start')
-                        return null;
-                    }
-                }
-                // Если проверка пройдена, передаем управление стандартному обработчику SDK
-                return super.onUpdate(update);
-            }
-        };
+        // Простая и чистая инициализация бота без анонимных классов и переопределений
+        this.bot = new LongPollingBot(maxClient, LongPollingBotOptions.DEFAULT, maxBotController);
         bot.start();
-        System.out.println("Long Polling Bot успешно запущен");
+        log.info("Long Polling Bot успешно запущен");
     }
 
     /**
@@ -66,10 +55,10 @@ public class MaxBotRunner implements CommandLineRunner, ApplicationListener<Cont
      * @param event событие закрытия контекста
      */
     @Override
-    public void onApplicationEvent(ContextClosedEvent event) {
+    public void onApplicationEvent(@NonNull ContextClosedEvent event) {
         if (bot != null) {
             bot.stop();
-            System.out.println("Long Polling Bot остановлен");
+            log.info("Long Polling Bot остановлен");
         }
     }
 }
